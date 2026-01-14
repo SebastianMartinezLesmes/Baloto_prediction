@@ -1,0 +1,9 @@
+{
+  "ultima_actualizacion": null,
+  "total_sorteos": 0,
+  "ventana": 3,
+  "modelo_numeros": "DecisionTree",
+  "modelo_superbalota": "RandomForest",
+  "estado": "inicial",
+  "version": "1.0.0"
+}

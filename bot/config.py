@@ -1,0 +1,3 @@
+RANGO_NUMEROS = (1, 43)
+RANGO_SB = (1, 16)
+VENTANA = 3
