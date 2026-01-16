@@ -1,4 +1,5 @@
-# entorno virtual
+# Baloto_prediction 
+### entorno virtual
 
 1. crearlo(cmd): 
     python -m venv venv
@@ -12,9 +13,11 @@
 4. salir del entorno:
     deactivate
 
-# ejecutar proyecto
+### ejecutar proyecto
 
 1. Entrar al CMD
 2. Ejecutar:
     python bot/index.py
-"# Baloto_prediction" 
+
+### link de datos
+[link del Baloto](https://resultados-de-loteria.com/baloto/resultados/2025)

@@ -4,6 +4,7 @@ import pandas as pd
 from pathlib import Path
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -11,7 +12,104 @@ DATA_PATH = BASE_DIR / "data" / "results.xlsx"
 MODELS_PATH = BASE_DIR / "models"
 MEMORY_PATH = BASE_DIR / "memory"
 
-def conteo_frecuencias(df):
+def crear_archivos_memoria():
+    print('Creando archivos')
+
+def asegurar_directorios():
+    MEMORY_PATH.mkdir(exist_ok=True)
+
+def conteo_frecuencias(df, frecuencias):
+    columnas_numeros = ["n1", "n2", "n3", "n4", "n5"]
+    columna_sb = "superbalota"
+
+    for _, row in df.iterrows():
+        for col in columnas_numeros:
+            valor = row[col]
+            if pd.isna(valor):
+                continue
+
+            valor = str(int(valor))
+            frecuencias["numeros"][valor] = frecuencias["numeros"].get(valor, 0) + 1
+
+        sb = row[columna_sb]
+        if pd.isna(sb):
+            continue
+
+        sb = str(int(sb))
+        frecuencias["superbalota"][sb] = frecuencias["superbalota"].get(sb, 0) + 1
+
+def construccion_transiciones(df):
+    print("✔ Actualizando transiciones...")
+
+    transiciones_path = MEMORY_PATH / "transiciones.json"
+    transiciones = {}
+
+    df = df.sort_values("fecha").reset_index(drop=True)
+
+    for i in range(len(df) - 1):
+        actual = sorted([
+            df.loc[i, "n1"],
+            df.loc[i, "n2"],
+            df.loc[i, "n3"],
+            df.loc[i, "n4"],
+            df.loc[i, "n5"]
+        ])
+
+        siguiente = sorted([
+            df.loc[i + 1, "n1"],
+            df.loc[i + 1, "n2"],
+            df.loc[i + 1, "n3"],
+            df.loc[i + 1, "n4"],
+            df.loc[i + 1, "n5"]
+        ])
+
+        key = "-".join(map(str, actual))
+        next_key = "-".join(map(str, siguiente))
+
+        transiciones.setdefault(key, {})
+        transiciones[key][next_key] = transiciones[key].get(next_key, 0) + 1
+
+    with open(transiciones_path, "w", encoding="utf-8") as f:
+        json.dump(transiciones, f, indent=2)
+
+def actualizacion_metadata(df):
+    print("✔ Actualizando metadata...")
+
+    metadata_path = MEMORY_PATH / "metadata.json"
+
+    metadata = {
+        "ultima_actualizacion": df["fecha"].max().strftime("%Y-%m-%d"),
+        "total_sorteos": len(df),
+        "ventana": 1,
+        "modelo_numeros": "DecisionTree",
+        "modelo_superbalota": "RandomForest",
+        "estado": "entrenable",
+        "version": "1.0.0"
+    }
+
+    with open(metadata_path, "w", encoding="utf-8") as f:
+        json.dump(metadata, f, indent=2)
+
+
+def actualizar_memoria():
+    print("\n=== ACTUALIZANDO MEMORIA ===")
+
+    asegurar_directorios()
+
+    if not DATA_PATH.exists():
+        raise FileNotFoundError("No existe results.xlsx")
+
+    df = pd.read_excel(DATA_PATH)
+
+    if "fecha" not in df.columns:
+        raise ValueError("El Excel debe contener la columna 'fecha'")
+
+    df["fecha"] = pd.to_datetime(df["fecha"], errors="coerce")
+    df = df.dropna(subset=["fecha"])
+
+    print(f"✔ Sorteos procesados: {len(df)}")
+
+    # ---------- FRECUENCIAS ----------
     frecuencias_path = MEMORY_PATH / "frecuencias.json"
     if frecuencias_path.exists():
         with open(frecuencias_path, "r", encoding="utf-8") as f:
@@ -22,76 +120,17 @@ def conteo_frecuencias(df):
             "superbalota": {str(i): 0 for i in range(1, 17)}
         }
 
-    for _, row in df.iterrows():
-        for col in ["n1", "n2", "n3", "n4", "n5"]:
-            frecuencias["numeros"][str(int(row[col]))] += 1
-        frecuencias["superbalota"][str(int(row["superbalota"]))] += 1
+    print("✔ Actualizando frecuencias...")
+    conteo_frecuencias(df, frecuencias)
+
     with open(frecuencias_path, "w", encoding="utf-8") as f:
         json.dump(frecuencias, f, indent=2)
 
-def construccion_transiciones(df):
-    transiciones_path = MEMORY_PATH / "transiciones.json"
-    transiciones = {}
-    df = df.sort_values("fecha")
-    for i in range(len(df) - 1):
-        actual = sorted([
-            df.iloc[i]["n1"],
-            df.iloc[i]["n2"],
-            df.iloc[i]["n3"],
-            df.iloc[i]["n4"],
-            df.iloc[i]["n5"]
-        ])
-        siguiente = sorted([
-            df.iloc[i + 1]["n1"],
-            df.iloc[i + 1]["n2"],
-            df.iloc[i + 1]["n3"],
-            df.iloc[i + 1]["n4"],
-            df.iloc[i + 1]["n5"]
-        ])
-        key = "-".join(map(str, actual))
-        next_key = "-".join(map(str, siguiente))
-        if key not in transiciones:
-            transiciones[key] = {}
+    construccion_transiciones(df) # TRANSICIONES
 
-        transiciones[key][next_key] = transiciones[key].get(next_key, 0) + 1
-    with open(transiciones_path, "w", encoding="utf-8") as f:
-        json.dump(transiciones, f, indent=2)
+    actualizacion_metadata(df) # METADATA
 
-def actualizacion_metadata(df):
-    metadata_path = MEMORY_PATH / "metadata.json"
-    metadata = {
-        "ultima_actualizacion": df["fecha"].max().strftime("%Y-%m-%d"),
-        "total_sorteos": len(df),
-        "ventana": 1,
-        "modelo_numeros": "DecisionTree",
-        "modelo_superbalota": "RandomForest",
-        "estado": "entrenable",
-        "version": "1.0.0"
-    }
-    with open(metadata_path, "w", encoding="utf-8") as f:
-        json.dump(metadata, f, indent=2)
-
-
-def actualizar_memoria():
-    """
-    Lee results.xlsx y actualiza:
-    - frecuencias.json
-    - transiciones.json
-    - metadata.json
-    """
-    if not DATA_PATH.exists():
-        raise FileNotFoundError("No se encontró data/results.xlsx")
-    df = pd.read_excel(DATA_PATH)
-    if "fecha" not in df.columns:
-        raise ValueError("El Excel debe contener la columna 'fecha'")
-
-    # Validación estricta del formato de fecha
-    df["fecha"] = pd.to_datetime(df["fecha"], format="%d/%m/%Y")
-
-    conteo_frecuencias(df)
-    construccion_transiciones(df)
-    actualizacion_metadata(df)
-    pass
+    print("✔ Memoria actualizada correctamente\n")
 
 def evaluar_modelos(modelo_num, modelo_sb, X_test, y_num_test, y_sb_test):
     pred_num = modelo_num.predict(X_test)
@@ -123,35 +162,45 @@ def guardar_mejor_modelo(modelo_num, modelo_sb, score):
     with open(MODELS_PATH / "score.txt", "w") as f:
         f.write(str(score))
 
-def entrenar_modelos(iteraciones=200):
+def entrenar_modelos(iteraciones=10):
     if not DATA_PATH.exists():
         raise FileNotFoundError("No se encontró data/results.xlsx")
+
+    MODELS_PATH.mkdir(exist_ok=True)
 
     df = pd.read_excel(DATA_PATH)
     df["fecha"] = pd.to_datetime(df["fecha"], format="%d/%m/%Y")
 
-    X = df[["n1", "n2", "n3", "n4", "n5"]].shift(1).dropna()
-    y_num = df[["n1", "n2", "n3", "n4", "n5"]].iloc[1:]
-    y_sb = df["superbalota"].iloc[1:]
+    # ===== 1. Construcción correcta de features (alineadas) =====
+    df_feat = df.sort_values("fecha").copy()
 
-    split = int(len(X) * 0.8)
+    df_feat[["n1", "n2", "n3", "n4", "n5"]] = df_feat[
+        ["n1", "n2", "n3", "n4", "n5"]
+    ].shift(1)
 
-    X_train, X_test = X[:split], X[split:]
-    y_num_train, y_num_test = y_num[:split], y_num[split:]
-    y_sb_train, y_sb_test = y_sb[:split], y_sb[split:]
+    df_feat = df_feat.dropna().reset_index(drop=True)
 
+    X = df_feat[["n1", "n2", "n3", "n4", "n5"]]
+    y_num = df_feat[["n1", "n2", "n3", "n4", "n5"]]
+    y_sb = df_feat["superbalota"]
+
+    mejor_score_path = MODELS_PATH / "score.txt"
+
+    # ===== 2. Ciclo de entrenamiento =====
     for i in range(iteraciones):
-        modelo_numeros = DecisionTreeClassifier(
-            max_depth=None,
-            random_state=None
+        X_train, X_test, y_num_train, y_num_test, y_sb_train, y_sb_test = train_test_split(
+            X,
+            y_num,
+            y_sb,
+            test_size=0.2,
+            random_state=i,
+            shuffle=True
         )
 
-        modelo_sb = RandomForestClassifier(
-            n_estimators=100,
-            random_state=None
-        )
-
+        modelo_numeros = DecisionTreeClassifier(random_state=i)
         modelo_numeros.fit(X_train, y_num_train)
+
+        modelo_sb = RandomForestClassifier(random_state=i)
         modelo_sb.fit(X_train, y_sb_train)
 
         score = evaluar_modelos(
@@ -162,8 +211,13 @@ def entrenar_modelos(iteraciones=200):
             y_sb_test
         )
 
-        if es_mejor(score, MODELS_PATH / "score.txt"):
+        print(f"Iteración {i + 1} | Score: {score}")
+
+        if es_mejor(score, mejor_score_path):
             guardar_mejor_modelo(modelo_numeros, modelo_sb, score)
+            print("✔ Modelo mejorado y guardado")
+        else:
+            print("✖ Modelo descartado")
 
 
 def predecir():

@@ -1,9 +1,10 @@
-from bot.bot import actualizar_memoria, entrenar_modelos, predecir
+from bot.bot import crear_archivos_memoria, actualizar_memoria, entrenar_modelos, predecir
 
 def mostrar_menu():
     print("""
 === BALOTO PREDICTION ===
-1. Actualizar memoria desde Excel
+0. Crear archivos de memoria
+1. Actualizar memoria
 2. Entrenar modelos
 3. Predecir próximo sorteo
 4. Salir
@@ -14,11 +15,13 @@ def main():
         mostrar_menu()
         opcion = input("Seleccione una opción: ")
 
+        if opcion == "0":
+            crear_archivos_memoria()
+        
         if opcion == "1":
             actualizar_memoria()
 
         elif opcion == "2":
-            # aquí luego prepararás X e y reales
             entrenar_modelos()
 
         elif opcion == "3":

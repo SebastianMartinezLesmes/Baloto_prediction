@@ -7,5 +7,5 @@ __pycache__/
 venv/
 
 # Models / generated files
-# bot/models/
-# bot/memory/
+bot/models/
+bot/memory/
