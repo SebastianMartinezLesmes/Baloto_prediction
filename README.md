@@ -17,7 +17,7 @@
 
 1. Entrar al CMD
 2. Ejecutar:
-    python bot/index.py
+    python index.py
 
 ### link de datos
 [link del Baloto](https://resultados-de-loteria.com/baloto/resultados/2025)

@@ -1,4 +1,5 @@
 from bot.bot import crear_archivos_memoria, actualizar_memoria, entrenar_modelos, predecir
+import time
 
 def mostrar_menu():
     print("""
@@ -28,8 +29,16 @@ def main():
             resultado = predecir()
             print("Predicción: \n", resultado)
 
+        # elif opcion == "4":
+        #     print("Saliendo...")
+        #     break
+
         elif opcion == "4":
-            print("Saliendo...")
+            print("Saliendo", end="", flush=True)
+            for _ in range(3):
+                time.sleep(0.5)
+                print(".", end="", flush=True)
+            print()
             break
 
         else:
